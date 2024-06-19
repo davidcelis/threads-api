@@ -5,7 +5,7 @@ require "spec_helper"
 RSpec.describe Threads::API::Client do
   let(:client) { described_class.new("ACCESS_TOKEN") }
 
-  describe "#threads" do
+  describe "#list_threads" do
     let(:before_cursor) { "QVFIUkFyUFVVczIwWjVNaDVieUxHbW9vWFVqNkh0MHU0cFZARVHRTR3ZADSUxnaTdTdXl2eXBqUG4yX0RLVTF3TUszWW1nXzVJcmU5bnd2QmV2ZAVVDNVFXcFRB" }
     let(:after_cursor) { "QVFIUkZA4QzVhQW1XdTFibU9lRUF2YUR1bEVRQkhVZAWRCX2d3TThUMGVoQ3ZAwT1E4bElEa0JzNGJqV2ZAtUE00U0dMTnhZAdXpBUWN3OUdVSF9aSGZAhYXlGSDFR" }
     let(:response_body) do
@@ -173,7 +173,7 @@ RSpec.describe Threads::API::Client do
     end
   end
 
-  describe "#thread" do
+  describe "#get_thread" do
     let(:response_body) do
       {id: "11111111111111111"}.to_json
     end
@@ -272,6 +272,237 @@ RSpec.describe Threads::API::Client do
         expect(child_2.timestamp).to eq("2024-06-18T01:23:45Z")
         expect(child_2.created_at).to eq(Time.utc(2024, 6, 18, 1, 23, 45))
       end
+    end
+  end
+
+  describe "#create_thread" do
+    let(:response_body) do
+      {id: "11111111111111111"}.to_json
+    end
+
+    let(:params) { {text: "Hello, world!"} }
+    let!(:request) do
+      stub_request(:post, "https://graph.threads.net/v1.0/me/threads")
+        .with(body: {access_token: "ACCESS_TOKEN", media_type: "TEXT", text: "Hello, world!"})
+        .to_return(body: response_body, headers: {"Content-Type" => "application/json"})
+    end
+
+    let(:pending_thread) { client.create_thread(**params) }
+
+    it "returns a response object with the pending thread's ID" do
+      expect(pending_thread.id).to eq("11111111111111111")
+    end
+
+    it "raises an error when the text is missing" do
+      params.delete(:text)
+
+      expect { pending_thread }.to raise_error(ArgumentError, "The `:text` option is required when the post's type is \"TEXT\"")
+    end
+
+    it "raises an error when the type is invalid" do
+      params[:type] = "CAROUSEL"
+
+      expect { pending_thread }.to raise_error(ArgumentError, "Invalid post type: CAROUSEL. Must be one of: \"TEXT\", \"IMAGE\", or \"VIDEO\"")
+    end
+
+    context "when uploading an image" do
+      let(:params) do
+        {
+          text: "Hello, world!",
+          type: "IMAGE",
+          image_url: "https://www.threads.net/image.jpg"
+        }
+      end
+
+      let!(:request) do
+        stub_request(:post, "https://graph.threads.net/v1.0/me/threads")
+          .with(body: {access_token: "ACCESS_TOKEN", media_type: "IMAGE", text: "Hello, world!", image_url: "https://www.threads.net/image.jpg"})
+          .to_return(body: response_body, headers: {"Content-Type" => "application/json"})
+      end
+
+      it "returns a response object with the new thread's ID" do
+        expect(pending_thread.id).to eq("11111111111111111")
+      end
+
+      it "raises an error when the image URL is missing" do
+        params.delete(:image_url)
+
+        expect { pending_thread }.to raise_error(ArgumentError, "The `:image_url` option is required when the post's type is \"IMAGE\"")
+      end
+    end
+
+    context "when uploading a video" do
+      let(:params) do
+        {
+          text: "Hello, world!",
+          type: "VIDEO",
+          video_url: "https://www.threads.net/video.mp4"
+        }
+      end
+
+      let!(:request) do
+        stub_request(:post, "https://graph.threads.net/v1.0/me/threads")
+          .with(body: {access_token: "ACCESS_TOKEN", media_type: "VIDEO", text: "Hello, world!", video_url: "https://www.threads.net/video.mp4"})
+          .to_return(body: response_body, headers: {"Content-Type" => "application/json"})
+      end
+
+      it "returns a response object with the new thread's ID" do
+        expect(pending_thread.id).to eq("11111111111111111")
+      end
+
+      it "raises an error when the video URL is missing" do
+        params.delete(:video_url)
+
+        expect { pending_thread }.to raise_error(ArgumentError, "The `:video_url` option is required when the post's type is \"VIDEO\"")
+      end
+    end
+  end
+
+  describe "#get_thread_status" do
+    let(:response_body) do
+      {
+        id: "11111111111111111",
+        status: "ERROR",
+        error_message: "FAILED_PROCESSING_VIDEO"
+      }.to_json
+    end
+
+    let!(:request) do
+      stub_request(:get, "https://graph.threads.net/v1.0/11111111111111111")
+        .with(query: {access_token: "ACCESS_TOKEN", fields: "id,status,error_message"})
+        .to_return(body: response_body, headers: {"Content-Type" => "application/json"})
+    end
+
+    let(:pending_thread) { client.get_thread_status("11111111111111111") }
+
+    it "returns a response object with the thread's status and error message" do
+      expect(pending_thread.id).to eq("11111111111111111")
+      expect(pending_thread.status).to eq("ERROR")
+      expect(pending_thread).to be_errored
+      expect(pending_thread.error_message).to eq("FAILED_PROCESSING_VIDEO")
+    end
+  end
+
+  describe "#create_carousel_item" do
+    let(:response_body) do
+      {id: "11111111111111111"}.to_json
+    end
+
+    let(:params) { {} }
+
+    let(:pending_thread) { client.create_carousel_item(**params) }
+
+    it "raises an error when the type is invalid" do
+      params[:type] = "TEXT"
+
+      expect { pending_thread }.to raise_error(ArgumentError, "Invalid item type: TEXT. Must be \"IMAGE\" or \"VIDEO\"")
+    end
+
+    context "when uploading an image" do
+      let(:params) do
+        {
+          type: "IMAGE",
+          image_url: "https://www.threads.net/image.jpg"
+        }
+      end
+
+      let!(:request) do
+        stub_request(:post, "https://graph.threads.net/v1.0/me/threads")
+          .with(body: {access_token: "ACCESS_TOKEN", media_type: "IMAGE", image_url: "https://www.threads.net/image.jpg", is_carousel_item: true})
+          .to_return(body: response_body, headers: {"Content-Type" => "application/json"})
+      end
+
+      let(:pending_thread) { client.create_carousel_item(**params) }
+
+      it "returns a response object with the new thread's ID" do
+        expect(pending_thread.id).to eq("11111111111111111")
+      end
+
+      it "raises an error when the image URL is missing" do
+        params.delete(:image_url)
+
+        expect { pending_thread }.to raise_error(ArgumentError, "The `:image_url` option is required when the item's type is \"IMAGE\"")
+      end
+    end
+
+    context "when uploading a video" do
+      let(:params) do
+        {
+          type: "VIDEO",
+          video_url: "https://www.threads.net/video.mp4"
+        }
+      end
+
+      let!(:request) do
+        stub_request(:post, "https://graph.threads.net/v1.0/me/threads")
+          .with(body: {access_token: "ACCESS_TOKEN", media_type: "VIDEO", video_url: "https://www.threads.net/video.mp4", is_carousel_item: true})
+          .to_return(body: response_body, headers: {"Content-Type" => "application/json"})
+      end
+
+      it "returns a response object with the new thread's ID" do
+        expect(pending_thread.id).to eq("11111111111111111")
+      end
+
+      it "raises an error when the video URL is missing" do
+        params.delete(:video_url)
+
+        expect { pending_thread }.to raise_error(ArgumentError, "The `:video_url` option is required when the item's type is \"VIDEO\"")
+      end
+    end
+  end
+
+  describe "#create_carousel_thread" do
+    let(:response_body) do
+      {id: "11111111111111111"}.to_json
+    end
+
+    let(:params) { {children: ["22222222222222222", "33333333333333333"], text: "Check out these pics!"} }
+    let!(:request) do
+      stub_request(:post, "https://graph.threads.net/v1.0/me/threads")
+        .with(body: {access_token: "ACCESS_TOKEN", media_type: "CAROUSEL", text: "Check out these pics!", children: "22222222222222222,33333333333333333"})
+        .to_return(body: response_body, headers: {"Content-Type" => "application/json"})
+    end
+
+    let(:pending_thread) { client.create_carousel_thread(**params) }
+
+    it "returns a response object with the new thread's ID" do
+      expect(pending_thread.id).to eq("11111111111111111")
+    end
+
+    it "raises an error when the children is nil" do
+      params[:children] = nil
+
+      expect { pending_thread }.to raise_error(ArgumentError, "At least one item must be present in the `:children` option")
+    end
+
+    it "raises an error when the children is an empty array" do
+      params[:children] = []
+
+      expect { pending_thread }.to raise_error(ArgumentError, "At least one item must be present in the `:children` option")
+    end
+
+    it "raises an error when the children is an empty string" do
+      params[:children] = ""
+
+      expect { pending_thread }.to raise_error(ArgumentError, "At least one item must be present in the `:children` option")
+    end
+  end
+
+  describe "#publish_thread" do
+    let(:response_body) do
+      {id: "11111111111111111"}.to_json
+    end
+
+    let!(:request) do
+      stub_request(:post, "https://graph.threads.net/v1.0/me/threads_publish")
+        .with(body: {access_token: "ACCESS_TOKEN", creation_id: "11111111111111111"})
+        .to_return(body: response_body, headers: {"Content-Type" => "application/json"})
+    end
+
+    let(:thread) { client.publish_thread("11111111111111111") }
+
+    it "returns a response object with the thread's ID" do
+      expect(thread.id).to eq("11111111111111111")
     end
   end
 end

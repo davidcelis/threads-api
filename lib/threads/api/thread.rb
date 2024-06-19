@@ -39,5 +39,44 @@ module Threads
         @is_quote_post
       end
     end
+
+    class UnpublishedThread
+      attr_reader :id
+
+      def initialize(json)
+        @id = json["id"]
+      end
+    end
+
+    class ThreadStatus < UnpublishedThread
+      attr_reader :status, :error_message
+
+      def initialize(json)
+        super
+
+        @status = json["status"]
+        @error_message = json["error_message"]
+      end
+
+      def in_progress?
+        @status == "IN_PROGRESS"
+      end
+
+      def finished?
+        @status == "FINISHED"
+      end
+
+      def published?
+        @status == "PUBLISHED"
+      end
+
+      def errored?
+        @status == "ERROR"
+      end
+
+      def expired?
+        @status == "EXPIRED"
+      end
+    end
   end
 end
