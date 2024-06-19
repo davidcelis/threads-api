@@ -24,6 +24,19 @@ RSpec.describe Threads::API::OAuth2::Client do
       expect(response.access_token).to eq("ACCESS_TOKEN")
       expect(response.user_id).to eq(1234567890)
     end
+
+    context "when an error occurs" do
+      let!(:request) do
+        stub_request(:post, "https://graph.threads.net/oauth/access_token")
+          .to_return(body: {error_type: "invalid_request", error_message: "Invalid redirect URI", code: 400}.to_json, headers: {"Content-Type" => "application/json"})
+      end
+
+      it "returns an error response" do
+        expect(response.error_type).to eq("invalid_request")
+        expect(response.error_message).to eq("Invalid redirect URI")
+        expect(response.code).to eq(400)
+      end
+    end
   end
 
   describe "#exchange_access_token" do

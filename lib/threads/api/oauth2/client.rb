@@ -2,7 +2,7 @@ module Threads
   module API
     module OAuth2
       class Client
-        ShortLivedResponse = Struct.new(:access_token, :user_id)
+        ShortLivedResponse = Struct.new(:access_token, :user_id, :error_type, :error_message, :code)
         LongLivedResponse = Struct.new(:access_token, :token_type, :expires_in)
 
         def initialize(client_id:, client_secret:)
@@ -19,7 +19,7 @@ module Threads
             redirect_uri: redirect_uri
           })
 
-          ShortLivedResponse.new(*response.body.values_at("access_token", "user_id"))
+          ShortLivedResponse.new(*response.body.values_at("access_token", "user_id", "error_type", "error_message", "code"))
         end
 
         def exchange_access_token(access_token)
