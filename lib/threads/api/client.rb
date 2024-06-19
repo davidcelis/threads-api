@@ -19,11 +19,11 @@ module Threads
         Threads::API::Thread::List.new(response.body)
       end
 
-      def get_thread(thread_id, user_id: "me", fields: nil)
+      def get_thread(thread_id, fields: nil)
         params = {access_token: @access_token}
         params[:fields] = Array(fields).join(",") if fields
 
-        response = connection.get("#{user_id}/threads/#{thread_id}", params)
+        response = connection.get(thread_id, params)
 
         Threads::API::Thread.new(response.body)
       end

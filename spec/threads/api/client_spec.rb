@@ -180,7 +180,7 @@ RSpec.describe Threads::API::Client do
 
     let(:params) { {} }
     let!(:request) do
-      stub_request(:get, "https://graph.threads.net/v1.0/me/threads/11111111111111111")
+      stub_request(:get, "https://graph.threads.net/v1.0/11111111111111111")
         .with(query: params.merge(access_token: "ACCESS_TOKEN"))
         .to_return(body: response_body, headers: {"Content-Type" => "application/json"})
     end
@@ -233,12 +233,12 @@ RSpec.describe Threads::API::Client do
       end
 
       let!(:request) do
-        stub_request(:get, "https://graph.threads.net/v1.0/1234567890/threads/11111111111111111")
+        stub_request(:get, "https://graph.threads.net/v1.0/11111111111111111")
           .with(query: params.merge(access_token: "ACCESS_TOKEN"))
           .to_return(body: response_body, headers: {"Content-Type" => "application/json"})
       end
 
-      let(:thread) { client.get_thread("11111111111111111", user_id: "1234567890", **params) }
+      let(:thread) { client.get_thread("11111111111111111", **params) }
 
       it "fully hydrates the Thread" do
         expect(thread.id).to eq("11111111111111111")
