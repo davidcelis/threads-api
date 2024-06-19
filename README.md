@@ -49,7 +49,41 @@ access_token = response.access_token
 expires_at = Time.now + response.expires_in
 ```
 
-Once you have a valid access token, whether it's short-lived or long-lived, you can use it to make requests to the Threads API.
+Once you have a valid access token, whether it's short-lived or long-lived, you can use it to make requests to the Threads API using a `Threads::API::Client`:
+
+```ruby
+client = Threads::API::Client.new(access_token)
+```
+
+## Reading Threads
+
+To read threads for a user:
+
+```ruby
+# List recent threads for a user.
+response = client.list_threads # Defaults to the authenticated user
+response = client.list_threads(user_id: "7770386109746442")
+
+# By default, the Threads API returns 25 threads at a time. You can paginate through them like so:
+next_page = client.list_threads(after: response.after_cursor) # or
+previous_page = client.list_threads(before: response.before_cursor)
+
+# Get a specific thread by ID.
+thread = client.get_thread("18050206876707110") # Defaults to the authenticated user
+thread = client.get_thread("18050206876707110", user_id: "7770386109746442")
+```
+
+`Threads::API::Client#list_threads` accepts the following options:
+
+* `user_id` - The ID of the user whose threads you want to read. Defaults to `"me"`, the authenticated user.
+* `fields` - An Array (or comma-separated String) of fields to include in the response. By default, only `id` is requested. See the [Threads API documentation](https://developers.facebook.com/docs/threads/threads-media#fields) for a list of available fields.
+* `since` - An ISO 8601 date string. Only threads published after this date will be returned.
+* `until` - An ISO 8601 date string. Only threads published before this date will be returned.
+* `before` - A cursor string returned by a previous request for pagination.
+* `after` - A cursor string returned by a previous request for pagination.
+* `limit` - The number of threads to return. Defaults to `25`, with a maximum of `100`.
+
+`Threads::API::Client#get_thread` accepts only the `user_id` and `fields` options.
 
 ## Contributing
 

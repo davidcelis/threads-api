@@ -2,5 +2,6 @@
 
 require "faraday"
 
+require_relative "api/client"
 require_relative "api/oauth2/client"
 require_relative "api/version"
