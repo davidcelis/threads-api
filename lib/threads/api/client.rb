@@ -1,3 +1,4 @@
+require_relative "profile"
 require_relative "thread"
 
 module Threads
@@ -5,6 +6,15 @@ module Threads
     class Client
       def initialize(access_token)
         @access_token = access_token
+      end
+
+      def get_profile(user_id = "me", fields: nil)
+        params = {access_token: @access_token}
+        params[:fields] = Array(fields).join(",") if fields
+
+        response = connection.get(user_id, params)
+
+        Threads::API::Profile.new(response.body)
       end
 
       def list_threads(user_id: "me", **options)

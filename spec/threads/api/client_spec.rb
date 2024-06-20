@@ -5,6 +5,56 @@ require "spec_helper"
 RSpec.describe Threads::API::Client do
   let(:client) { described_class.new("ACCESS_TOKEN") }
 
+  describe "#get_profile" do
+    let(:response_body) do
+      {id: "1234567890"}.to_json
+    end
+
+    let(:params) { {} }
+    let!(:request) do
+      stub_request(:get, "https://graph.threads.net/v1.0/me")
+        .with(query: params.merge(access_token: "ACCESS_TOKEN"))
+        .to_return(body: response_body, headers: {"Content-Type" => "application/json"})
+    end
+
+    let(:profile) { client.get_profile(**params) }
+
+    it "returns a response object with the user's profile" do
+      expect(profile.id).to eq("1234567890")
+    end
+
+    context "when requesting all fields" do
+      let(:response_body) do
+        {
+          id: "1234567890",
+          username: "davidcelis",
+          profile_picture_url: "https://scontent-sjc3-1.cdninstagram.com/link/to/profile/picture/on/threads/",
+          biography: "Cowboy coder."
+        }.to_json
+      end
+
+      let(:params) do
+        {
+          fields: ["id", "username", "profile_picture_url", "biography"]
+        }
+      end
+      let!(:request) do
+        stub_request(:get, "https://graph.threads.net/v1.0/1234567890")
+          .with(query: {access_token: "ACCESS_TOKEN", fields: "id,username,profile_picture_url,biography"})
+          .to_return(body: response_body, headers: {"Content-Type" => "application/json"})
+      end
+
+      let(:profile) { client.get_profile("1234567890", **params) }
+
+      it "fully hydrates the Profile" do
+        expect(profile.id).to eq("1234567890")
+        expect(profile.username).to eq("davidcelis")
+        expect(profile.profile_picture_url).to eq("https://scontent-sjc3-1.cdninstagram.com/link/to/profile/picture/on/threads/")
+        expect(profile.biography).to eq("Cowboy coder.")
+      end
+    end
+  end
+
   describe "#list_threads" do
     let(:before_cursor) { "QVFIUkFyUFVVczIwWjVNaDVieUxHbW9vWFVqNkh0MHU0cFZARVHRTR3ZADSUxnaTdTdXl2eXBqUG4yX0RLVTF3TUszWW1nXzVJcmU5bnd2QmV2ZAVVDNVFXcFRB" }
     let(:after_cursor) { "QVFIUkZA4QzVhQW1XdTFibU9lRUF2YUR1bEVRQkhVZAWRCX2d3TThUMGVoQ3ZAwT1E4bElEa0JzNGJqV2ZAtUE00U0dMTnhZAdXpBUWN3OUdVSF9aSGZAhYXlGSDFR" }
