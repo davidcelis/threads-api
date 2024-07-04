@@ -7,50 +7,57 @@ RSpec.describe Threads::API::Client do
 
   describe "#get_profile" do
     let(:response_body) do
-      {id: "1234567890"}.to_json
+      {
+        id: "1234567890",
+        username: "davidcelis",
+        profile_picture_url: "https://scontent-sjc3-1.cdninstagram.com/link/to/profile/picture/on/threads/",
+        biography: "Cowboy coder."
+      }.to_json
     end
 
     let(:params) { {} }
     let!(:request) do
       stub_request(:get, "https://graph.threads.net/v1.0/me")
-        .with(query: params.merge(access_token: "ACCESS_TOKEN"))
+        .with(query: params.merge(access_token: "ACCESS_TOKEN", fields: Threads::API::Client::PROFILE_FIELDS.join(",")))
         .to_return(body: response_body, headers: {"Content-Type" => "application/json"})
     end
 
     let(:profile) { client.get_profile(**params) }
 
-    it "returns a response object with the user's profile" do
+    it "returns a fully hydrated Profile by default" do
       expect(profile.id).to eq("1234567890")
+      expect(profile.username).to eq("davidcelis")
+      expect(profile.profile_picture_url).to eq("https://scontent-sjc3-1.cdninstagram.com/link/to/profile/picture/on/threads/")
+      expect(profile.biography).to eq("Cowboy coder.")
     end
 
-    context "when requesting all fields" do
+    context "when requesting specific fields" do
       let(:response_body) do
         {
           id: "1234567890",
           username: "davidcelis",
-          profile_picture_url: "https://scontent-sjc3-1.cdninstagram.com/link/to/profile/picture/on/threads/",
           biography: "Cowboy coder."
         }.to_json
       end
 
       let(:params) do
         {
-          fields: ["id", "username", "profile_picture_url", "biography"]
+          fields: ["id", "username", "biography"]
         }
       end
       let!(:request) do
         stub_request(:get, "https://graph.threads.net/v1.0/1234567890")
-          .with(query: {access_token: "ACCESS_TOKEN", fields: "id,username,profile_picture_url,biography"})
+          .with(query: {access_token: "ACCESS_TOKEN", fields: "id,username,biography"})
           .to_return(body: response_body, headers: {"Content-Type" => "application/json"})
       end
 
       let(:profile) { client.get_profile("1234567890", **params) }
 
-      it "fully hydrates the Profile" do
+      it "returns a Profile with the specific fields" do
         expect(profile.id).to eq("1234567890")
         expect(profile.username).to eq("davidcelis")
-        expect(profile.profile_picture_url).to eq("https://scontent-sjc3-1.cdninstagram.com/link/to/profile/picture/on/threads/")
         expect(profile.biography).to eq("Cowboy coder.")
+        expect(profile.profile_picture_url).to be_nil
       end
     end
   end

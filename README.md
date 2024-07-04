@@ -85,6 +85,16 @@ thread = client.get_thread("18050206876707110", user_id: "7770386109746442")
 
 `Threads::API::Client#get_thread` accepts only the `user_id` and `fields` options.
 
+## Reading profiles
+
+To get a user's profile:
+
+```ruby
+profile = client.get_profile("7770386109746442")
+```
+
+`Threads::API::Client#get_profile` accepts a `fields` option, which is an Array (or comma-separated String) of fields to include in the response. By default, all documented fields are requested. See the [Threads API documentation](https://developers.facebook.com/docs/threads/threads-profiles#fields) for a list of available fields.
+
 ## Posting to Threads
 
 Posting to Threads is, at the very least, a two-step process. Threads requires that you first create a container for the media you want to post, then explicitly publishing that container as a thread. However, more steps are involved if you want to post multiple media items in a single thread.

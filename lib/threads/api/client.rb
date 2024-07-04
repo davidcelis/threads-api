@@ -4,6 +4,7 @@ require_relative "thread"
 module Threads
   module API
     class Client
+      PROFILE_FIELDS = %w[id username threads_profile_picture_url threads_biography]
       POST_FIELDS = %w[
         id
         media_product_type
@@ -24,7 +25,7 @@ module Threads
         @access_token = access_token
       end
 
-      def get_profile(user_id = "me", fields: nil)
+      def get_profile(user_id = "me", fields: PROFILE_FIELDS)
         params = {access_token: @access_token}
         params[:fields] = Array(fields).join(",") if fields
 
