@@ -85,9 +85,11 @@ module Threads
         Threads::API::UnpublishedThread.new(response.body)
       end
 
-      def create_carousel_thread(children:, text: nil)
+      def create_carousel_thread(children:, text: nil, reply_to_id: nil, reply_control: nil)
         params = {access_token: @access_token, media_type: "CAROUSEL", text: text}
         params[:children] = Array(children).join(",")
+        params[:reply_to_id] = reply_to_id if reply_to_id
+        params[:reply_control] = reply_control if reply_control
 
         raise ArgumentError, "At least one item must be present in the `:children` option" if params[:children].empty?
 
