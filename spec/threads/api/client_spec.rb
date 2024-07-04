@@ -60,11 +60,37 @@ RSpec.describe Threads::API::Client do
     let(:after_cursor) { "QVFIUkZA4QzVhQW1XdTFibU9lRUF2YUR1bEVRQkhVZAWRCX2d3TThUMGVoQ3ZAwT1E4bElEa0JzNGJqV2ZAtUE00U0dMTnhZAdXpBUWN3OUdVSF9aSGZAhYXlGSDFR" }
     let(:response_body) do
       {
-        data: [
-          {id: "11111111111111111"},
-          {id: "22222222222222222"},
-          {id: "33333333333333333"}
-        ],
+        data: [{
+          id: "11111111111111111",
+          media_product_type: "THREADS",
+          media_type: "CAROUSEL_ALBUM",
+          text: "Hello, world!",
+          permalink: "https://www.threads.net/@davidcelis/post/c8yKXdQp0qR",
+          owner: {id: "1234567890"},
+          username: "davidcelis",
+          timestamp: "2024-06-18T01:23:45Z",
+          shortcode: "c8yKXdQp0qR",
+          is_quote_post: false,
+          children: [
+            {
+              id: "22222222222222222",
+              media_type: "IMAGE",
+              media_url: "https://www.threads.net/image.jpg",
+              owner: {id: "1234567890"},
+              username: "davidcelis",
+              timestamp: "2024-06-18T01:23:45Z"
+            },
+            {
+              id: "33333333333333333",
+              media_type: "VIDEO",
+              media_url: "https://www.threads.net/video.mp4",
+              thumbnail_url: "https://www.threads.net/video.jpg",
+              owner: {id: "1234567890"},
+              username: "davidcelis",
+              timestamp: "2024-06-18T01:23:45Z"
+            }
+          ]
+        }],
         paging: {cursors: {before: before_cursor, after: after_cursor}}
       }.to_json
     end
@@ -72,17 +98,47 @@ RSpec.describe Threads::API::Client do
     let(:params) { {} }
     let!(:request) do
       stub_request(:get, "https://graph.threads.net/v1.0/me/threads")
-        .with(query: params.merge(access_token: "ACCESS_TOKEN"))
+        .with(query: params.merge(access_token: "ACCESS_TOKEN", fields: Threads::API::Client::POST_FIELDS.join(",")))
         .to_return(body: response_body, headers: {"Content-Type" => "application/json"})
     end
 
-    let(:response) { client.list_threads(**params) }
+    it "returns a list of fully hydrated Threads by default" do
+      expect(response.threads.size).to eq(1)
 
-    it "returns a response object with threads and cursors for pagination" do
-      expect(response.threads.map(&:id)).to match_array(%w[11111111111111111 22222222222222222 33333333333333333])
-      expect(response.before).to eq(before_cursor)
-      expect(response.after).to eq(after_cursor)
+      thread = response.threads.first
+      expect(thread.id).to eq("11111111111111111")
+      expect(thread.type).to eq("CAROUSEL_ALBUM")
+      expect(thread.text).to eq("Hello, world!")
+      expect(thread.permalink).to eq("https://www.threads.net/@davidcelis/post/c8yKXdQp0qR")
+      expect(thread.user_id).to eq("1234567890")
+      expect(thread.username).to eq("davidcelis")
+      expect(thread.timestamp).to eq("2024-06-18T01:23:45Z")
+      expect(thread.created_at).to eq(Time.utc(2024, 6, 18, 1, 23, 45))
+      expect(thread.shortcode).to eq("c8yKXdQp0qR")
+      expect(thread).not_to be_quote_post
+
+      expect(thread.children.size).to eq(2)
+
+      child_1 = thread.children.find { |c| c.id == "22222222222222222" }
+      expect(child_1.type).to eq("IMAGE")
+      expect(child_1.media_url).to eq("https://www.threads.net/image.jpg")
+      expect(child_1.video_thumbnail_url).to be_nil
+      expect(child_1.user_id).to eq("1234567890")
+      expect(child_1.username).to eq("davidcelis")
+      expect(child_1.timestamp).to eq("2024-06-18T01:23:45Z")
+      expect(child_1.created_at).to eq(Time.utc(2024, 6, 18, 1, 23, 45))
+
+      child_2 = thread.children.find { |c| c.id == "33333333333333333" }
+      expect(child_2.type).to eq("VIDEO")
+      expect(child_2.media_url).to eq("https://www.threads.net/video.mp4")
+      expect(child_2.video_thumbnail_url).to eq("https://www.threads.net/video.jpg")
+      expect(child_2.user_id).to eq("1234567890")
+      expect(child_2.username).to eq("davidcelis")
+      expect(child_2.timestamp).to eq("2024-06-18T01:23:45Z")
+      expect(child_2.created_at).to eq(Time.utc(2024, 6, 18, 1, 23, 45))
     end
+
+    let(:response) { client.list_threads(**params) }
 
     context "when passing additional options" do
       let(:params) do
@@ -147,138 +203,90 @@ RSpec.describe Threads::API::Client do
           fields: "id,media_product_type,media_type,media_url,permalink,owner,username,text,timestamp,shortcode,thumbnail_url,children,is_quote_post"
         }
       end
-
-      let(:response_body) do
-        {
-          data: [{
-            id: "11111111111111111",
-            media_product_type: "THREADS",
-            media_type: "CAROUSEL_ALBUM",
-            text: "Hello, world!",
-            permalink: "https://www.threads.net/@davidcelis/post/c8yKXdQp0qR",
-            owner: {id: "1234567890"},
-            username: "davidcelis",
-            timestamp: "2024-06-18T01:23:45Z",
-            shortcode: "c8yKXdQp0qR",
-            is_quote_post: false,
-            children: [
-              {
-                id: "22222222222222222",
-                media_type: "IMAGE",
-                media_url: "https://www.threads.net/image.jpg",
-                owner: {id: "1234567890"},
-                username: "davidcelis",
-                timestamp: "2024-06-18T01:23:45Z"
-              },
-              {
-                id: "33333333333333333",
-                media_type: "VIDEO",
-                media_url: "https://www.threads.net/video.mp4",
-                thumbnail_url: "https://www.threads.net/video.jpg",
-                owner: {id: "1234567890"},
-                username: "davidcelis",
-                timestamp: "2024-06-18T01:23:45Z"
-              }
-            ]
-          }],
-          paging: {cursors: {before: before_cursor, after: after_cursor}}
-        }.to_json
-      end
-
-      it "fully hydrates each Thread" do
-        expect(response.threads.size).to eq(1)
-
-        thread = response.threads.first
-        expect(thread.id).to eq("11111111111111111")
-        expect(thread.type).to eq("CAROUSEL_ALBUM")
-        expect(thread.text).to eq("Hello, world!")
-        expect(thread.permalink).to eq("https://www.threads.net/@davidcelis/post/c8yKXdQp0qR")
-        expect(thread.user_id).to eq("1234567890")
-        expect(thread.username).to eq("davidcelis")
-        expect(thread.timestamp).to eq("2024-06-18T01:23:45Z")
-        expect(thread.created_at).to eq(Time.utc(2024, 6, 18, 1, 23, 45))
-        expect(thread.shortcode).to eq("c8yKXdQp0qR")
-        expect(thread).not_to be_quote_post
-
-        expect(thread.children.size).to eq(2)
-
-        child_1 = thread.children.find { |c| c.id == "22222222222222222" }
-        expect(child_1.type).to eq("IMAGE")
-        expect(child_1.media_url).to eq("https://www.threads.net/image.jpg")
-        expect(child_1.video_thumbnail_url).to be_nil
-        expect(child_1.user_id).to eq("1234567890")
-        expect(child_1.username).to eq("davidcelis")
-        expect(child_1.timestamp).to eq("2024-06-18T01:23:45Z")
-        expect(child_1.created_at).to eq(Time.utc(2024, 6, 18, 1, 23, 45))
-
-        child_2 = thread.children.find { |c| c.id == "33333333333333333" }
-        expect(child_2.type).to eq("VIDEO")
-        expect(child_2.media_url).to eq("https://www.threads.net/video.mp4")
-        expect(child_2.video_thumbnail_url).to eq("https://www.threads.net/video.jpg")
-        expect(child_2.user_id).to eq("1234567890")
-        expect(child_2.username).to eq("davidcelis")
-        expect(child_2.timestamp).to eq("2024-06-18T01:23:45Z")
-        expect(child_2.created_at).to eq(Time.utc(2024, 6, 18, 1, 23, 45))
-      end
     end
   end
 
   describe "#get_thread" do
     let(:response_body) do
-      {id: "11111111111111111"}.to_json
+      {
+        id: "11111111111111111",
+        media_product_type: "THREADS",
+        media_type: "CAROUSEL_ALBUM",
+        text: "Hello, world!",
+        permalink: "https://www.threads.net/@davidcelis/post/c8yKXdQp0qR",
+        owner: {id: "1234567890"},
+        username: "davidcelis",
+        timestamp: "2024-06-18T01:23:45Z",
+        shortcode: "c8yKXdQp0qR",
+        is_quote_post: false,
+        children: [
+          {
+            id: "22222222222222222",
+            media_type: "IMAGE",
+            media_url: "https://www.threads.net/image.jpg",
+            owner: {id: "1234567890"},
+            username: "davidcelis",
+            timestamp: "2024-06-18T01:23:45Z"
+          },
+          {
+            id: "33333333333333333",
+            media_type: "VIDEO",
+            media_url: "https://www.threads.net/video.mp4",
+            thumbnail_url: "https://www.threads.net/video.jpg",
+            owner: {id: "1234567890"},
+            username: "davidcelis",
+            timestamp: "2024-06-18T01:23:45Z"
+          }
+        ]
+      }.to_json
     end
 
     let(:params) { {} }
     let!(:request) do
       stub_request(:get, "https://graph.threads.net/v1.0/11111111111111111")
-        .with(query: params.merge(access_token: "ACCESS_TOKEN"))
+        .with(query: params.merge(access_token: "ACCESS_TOKEN", fields: Threads::API::Client::POST_FIELDS.join(",")))
         .to_return(body: response_body, headers: {"Content-Type" => "application/json"})
     end
 
     let(:thread) { client.get_thread("11111111111111111") }
 
-    it "returns a response object with a single thread" do
+    it "returns a fully hydrated Thread by default" do
       expect(thread.id).to eq("11111111111111111")
+      expect(thread.type).to eq("CAROUSEL_ALBUM")
+      expect(thread.text).to eq("Hello, world!")
+      expect(thread.permalink).to eq("https://www.threads.net/@davidcelis/post/c8yKXdQp0qR")
+      expect(thread.user_id).to eq("1234567890")
+      expect(thread.username).to eq("davidcelis")
+      expect(thread.timestamp).to eq("2024-06-18T01:23:45Z")
+      expect(thread.created_at).to eq(Time.utc(2024, 6, 18, 1, 23, 45))
+      expect(thread.shortcode).to eq("c8yKXdQp0qR")
+      expect(thread).not_to be_quote_post
+
+      expect(thread.children.size).to eq(2)
+
+      child_1 = thread.children.find { |c| c.id == "22222222222222222" }
+      expect(child_1.type).to eq("IMAGE")
+      expect(child_1.media_url).to eq("https://www.threads.net/image.jpg")
+      expect(child_1.video_thumbnail_url).to be_nil
+      expect(child_1.user_id).to eq("1234567890")
+      expect(child_1.username).to eq("davidcelis")
+      expect(child_1.timestamp).to eq("2024-06-18T01:23:45Z")
+      expect(child_1.created_at).to eq(Time.utc(2024, 6, 18, 1, 23, 45))
+
+      child_2 = thread.children.find { |c| c.id == "33333333333333333" }
+      expect(child_2.type).to eq("VIDEO")
+      expect(child_2.media_url).to eq("https://www.threads.net/video.mp4")
+      expect(child_2.video_thumbnail_url).to eq("https://www.threads.net/video.jpg")
+      expect(child_2.user_id).to eq("1234567890")
+      expect(child_2.username).to eq("davidcelis")
+      expect(child_2.timestamp).to eq("2024-06-18T01:23:45Z")
+      expect(child_2.created_at).to eq(Time.utc(2024, 6, 18, 1, 23, 45))
     end
 
-    context "when requesting all fields" do
-      let(:response_body) do
-        {
-          id: "11111111111111111",
-          media_product_type: "THREADS",
-          media_type: "CAROUSEL_ALBUM",
-          text: "Hello, world!",
-          permalink: "https://www.threads.net/@davidcelis/post/c8yKXdQp0qR",
-          owner: {id: "1234567890"},
-          username: "davidcelis",
-          timestamp: "2024-06-18T01:23:45Z",
-          shortcode: "c8yKXdQp0qR",
-          is_quote_post: false,
-          children: [
-            {
-              id: "22222222222222222",
-              media_type: "IMAGE",
-              media_url: "https://www.threads.net/image.jpg",
-              owner: {id: "1234567890"},
-              username: "davidcelis",
-              timestamp: "2024-06-18T01:23:45Z"
-            },
-            {
-              id: "33333333333333333",
-              media_type: "VIDEO",
-              media_url: "https://www.threads.net/video.mp4",
-              thumbnail_url: "https://www.threads.net/video.jpg",
-              owner: {id: "1234567890"},
-              username: "davidcelis",
-              timestamp: "2024-06-18T01:23:45Z"
-            }
-          ]
-        }.to_json
-      end
-
+    context "when requesting specific fields" do
       let(:params) do
         {
-          fields: "id,media_product_type,media_type,media_url,permalink,owner,username,text,timestamp,shortcode,thumbnail_url,children,is_quote_post"
+          fields: "id,text,timestamp"
         }
       end
 
@@ -290,37 +298,11 @@ RSpec.describe Threads::API::Client do
 
       let(:thread) { client.get_thread("11111111111111111", **params) }
 
-      it "fully hydrates the Thread" do
+      it "returns a response object with the specified fields" do
         expect(thread.id).to eq("11111111111111111")
-        expect(thread.type).to eq("CAROUSEL_ALBUM")
         expect(thread.text).to eq("Hello, world!")
-        expect(thread.permalink).to eq("https://www.threads.net/@davidcelis/post/c8yKXdQp0qR")
-        expect(thread.user_id).to eq("1234567890")
-        expect(thread.username).to eq("davidcelis")
         expect(thread.timestamp).to eq("2024-06-18T01:23:45Z")
         expect(thread.created_at).to eq(Time.utc(2024, 6, 18, 1, 23, 45))
-        expect(thread.shortcode).to eq("c8yKXdQp0qR")
-        expect(thread).not_to be_quote_post
-
-        expect(thread.children.size).to eq(2)
-
-        child_1 = thread.children.find { |c| c.id == "22222222222222222" }
-        expect(child_1.type).to eq("IMAGE")
-        expect(child_1.media_url).to eq("https://www.threads.net/image.jpg")
-        expect(child_1.video_thumbnail_url).to be_nil
-        expect(child_1.user_id).to eq("1234567890")
-        expect(child_1.username).to eq("davidcelis")
-        expect(child_1.timestamp).to eq("2024-06-18T01:23:45Z")
-        expect(child_1.created_at).to eq(Time.utc(2024, 6, 18, 1, 23, 45))
-
-        child_2 = thread.children.find { |c| c.id == "33333333333333333" }
-        expect(child_2.type).to eq("VIDEO")
-        expect(child_2.media_url).to eq("https://www.threads.net/video.mp4")
-        expect(child_2.video_thumbnail_url).to eq("https://www.threads.net/video.jpg")
-        expect(child_2.user_id).to eq("1234567890")
-        expect(child_2.username).to eq("davidcelis")
-        expect(child_2.timestamp).to eq("2024-06-18T01:23:45Z")
-        expect(child_2.created_at).to eq(Time.utc(2024, 6, 18, 1, 23, 45))
       end
     end
   end

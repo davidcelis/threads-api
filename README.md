@@ -76,7 +76,7 @@ thread = client.get_thread("18050206876707110", user_id: "7770386109746442")
 `Threads::API::Client#list_threads` accepts the following options:
 
 * `user_id` - The ID of the user whose threads you want to read. Defaults to `"me"`, the authenticated user.
-* `fields` - An Array (or comma-separated String) of fields to include in the response. By default, only `id` is requested. See the [Threads API documentation](https://developers.facebook.com/docs/threads/threads-media#fields) for a list of available fields.
+* `fields` - An Array (or comma-separated String) of fields to include in the response. By default, all documented fields are requested. See the [Threads API documentation](https://developers.facebook.com/docs/threads/threads-media#fields) for a list of available fields.
 * `since` - An ISO 8601 date string. Only threads published after this date will be returned.
 * `until` - An ISO 8601 date string. Only threads published before this date will be returned.
 * `before` - A cursor string returned by a previous request for pagination.

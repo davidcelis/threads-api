@@ -4,6 +4,22 @@ require_relative "thread"
 module Threads
   module API
     class Client
+      POST_FIELDS = %w[
+        id
+        media_product_type
+        media_type
+        media_url
+        permalink
+        owner
+        username
+        text
+        timestamp
+        shortcode
+        thumbnail_url
+        children
+        is_quote_post
+      ]
+
       def initialize(access_token)
         @access_token = access_token
       end
@@ -21,7 +37,12 @@ module Threads
         params = options.slice(:since, :until, :before, :after, :limit).compact
         params[:access_token] = @access_token
 
-        fields = Array(options[:fields]).join(",")
+        fields = if options.key?(:fields)
+          Array(options[:fields]).join(",")
+        else
+          POST_FIELDS.join(",")
+        end
+
         params[:fields] = fields unless fields.empty?
 
         response = connection.get("#{user_id}/threads", params)
@@ -29,7 +50,7 @@ module Threads
         Threads::API::Thread::List.new(response.body)
       end
 
-      def get_thread(thread_id, fields: nil)
+      def get_thread(thread_id, fields: POST_FIELDS)
         params = {access_token: @access_token}
         params[:fields] = Array(fields).join(",") if fields
 
